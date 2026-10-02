@@ -4,7 +4,7 @@
 # Version
 #
 VERSION?=$(shell git describe --tags --dirty)
-WXVERSION=3.0
+WXVERSION=3.2
 
 #
 # Source files
@@ -35,7 +35,8 @@ OS:=$(shell uname -s | cut -c -7)
 #
 ifeq ($(OS),MINGW32)
 # Use wxWindows development branch to work around font scaling issues on Windows
-WXVERSION=3.1
+# Following line commented out by droftarts, as libwxgtk3.2-dev is the current version 06/11/24
+# WXVERSION=3.1
 EXE=.exe
 COMMON_SRCS+=WinSerialPort.cpp WinPortFactory.cpp
 COMMON_LDFLAGS=-Wl,--enable-auto-import -static -static-libstdc++ -static-libgcc
