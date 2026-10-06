@@ -47,6 +47,9 @@ COMMON_LDFLAGS=-Wl,--enable-auto-import -static -static-libstdc++ -static-libgcc
 COMMON_LIBS=-ltermcap -Wl,--as-needed -lsetupapi
 # The shared wx config defines WXUSINGDLL, whose import symbols a -static link cannot resolve
 WX_CONFIG_FLAGS=--static=yes
+# Link the GUI as a Windows application so it doesn't open a console window;
+# MSYS2's wx-config doesn't add this itself
+WX_LIBS+=-mwindows
 BOSSA_RC=BossaRes.rc
 WIXDIR="C:\Program Files (x86)\WiX Toolset v3.11\bin"
 CODE_SIGN=$(INSTALLDIR)\\code_sign.p12
