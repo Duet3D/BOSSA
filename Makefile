@@ -5,6 +5,8 @@
 #
 VERSION?=$(shell sed -n "/<ItemDefinitionGroup.*'Release|x64'/,/<\/ItemDefinitionGroup>/s/.*VERSION=\"\([^\"]*\)\".*/\1/p" Bossa.vcxproj | head -1)
 WXVERSION=3.2
+# Homebrew installs the 3.2 tool as wx-config-3.2 to keep it out of the way of wxwidgets 3.3
+WXCONFIG?=wx-config
 
 #
 # Source files
@@ -45,6 +47,8 @@ EXE=.exe
 COMMON_SRCS+=WinSerialPort.cpp WinPortFactory.cpp
 COMMON_LDFLAGS=-Wl,--enable-auto-import -static -static-libstdc++ -static-libgcc
 COMMON_LIBS=-ltermcap -Wl,--as-needed -lsetupapi
+# The shared wx config defines WXUSINGDLL, whose import symbols a -static link cannot resolve
+WX_CONFIG_FLAGS=--static=yes
 BOSSA_RC=BossaRes.rc
 WIXDIR="C:\Program Files (x86)\WiX Toolset v3.11\bin"
 CODE_SIGN=$(INSTALLDIR)\\code_sign.p12
@@ -120,8 +124,8 @@ APP=BOSSA.app
 DMG=bossa-$(VERSION).dmg
 VOLUME=BOSSA
 BACKGROUND=$(INSTALLDIR)/background.png
-.PHONY: install
-app:
+.PHONY: app install
+app: strip-bossa
 	mkdir -p $(BINDIR)/$(APP)/Contents/MacOS
 	mkdir -p $(BINDIR)/$(APP)/Contents/Resources
 	cp -f $(INSTALLDIR)/Info.plist $(BINDIR)/$(APP)/Contents
@@ -215,7 +219,7 @@ ARMOBJCOPY=$(ARM)objcopy
 # CXX Flags
 #
 COMMON_CXXFLAGS+=-Wall -Werror -MT $@ -MD -MP -MF $(@:%.o=%.d) -DVERSION=\"$(VERSION)\" -g -O2 $(CXXFLAGS)
-WX_CXXFLAGS:=$(shell wx-config --cxxflags --version=$(WXVERSION)) -DWX_PRECOMP -Wno-ctor-dtor-privacy -O2 -fno-strict-aliasing
+WX_CXXFLAGS:=$(shell $(WXCONFIG) $(WX_CONFIG_FLAGS) --cxxflags --version=$(WXVERSION)) -DWX_PRECOMP -Wno-ctor-dtor-privacy -O2 -fno-strict-aliasing
 BOSSA_CXXFLAGS=$(COMMON_CXXFLAGS) $(WX_CXXFLAGS)
 BOSSAC_CXXFLAGS=$(COMMON_CXXFLAGS)
 BOSSASH_CXXFLAGS=$(COMMON_CXXFLAGS)
@@ -232,7 +236,7 @@ BOSSASH_LDFLAGS=$(COMMON_LDFLAGS)
 # Libs
 #
 COMMON_LIBS+=
-WX_LIBS:=$(shell wx-config --libs --version=$(WXVERSION)) $(WX_LIBS)
+WX_LIBS:=$(shell $(WXCONFIG) $(WX_CONFIG_FLAGS) --libs --version=$(WXVERSION)) $(WX_LIBS)
 BOSSA_LIBS=$(COMMON_LIBS) $(WX_LIBS)
 BOSSAC_LIBS=$(COMMON_LIBS)
 BOSSASH_LIBS=-lreadline $(COMMON_LIBS)
@@ -288,7 +292,7 @@ $(foreach src,$(BOSSA_SRCS),$(eval $(call bossa_obj,$(src))))
 ifeq ($(OS),Windows_NT)
 $(OBJDIR)/$(BOSSA_RC:%.rc=%.o): $(RESDIR)/$(BOSSA_RC)
 	@echo RC $<
-	$(Q)`wx-config --rescomp --version=$(WXVERSION)` -o $@ $<
+	$(Q)`$(WXCONFIG) $(WX_CONFIG_FLAGS) --rescomp --version=$(WXVERSION)` -o $@ $<
 endif
 
 #
