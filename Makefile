@@ -1,9 +1,9 @@
 .DEFAULT_GOAL := all
 
 #
-# Version
+# Version, maintained only in the 64-bit Release configuration of the MSVC project
 #
-VERSION?=$(shell git describe --tags --dirty)
+VERSION?=$(shell sed -n "/<ItemDefinitionGroup.*'Release|x64'/,/<\/ItemDefinitionGroup>/s/.*VERSION=\"\([^\"]*\)\".*/\1/p" Bossa.vcxproj | head -1)
 WXVERSION=3.2
 
 #
@@ -26,14 +26,18 @@ RESDIR=res
 INSTALLDIR=install
 
 #
-# Determine OS
+# Determine OS and machine
+# Windows sets OS to Windows_NT in the environment, MSYS2 included, so uname is only needed elsewhere
 #
+ifneq ($(OS),Windows_NT)
 OS:=$(shell uname -s | cut -c -7)
+endif
+MACHINE?=$(shell uname -m)
 
 #
 # Windows rules
 #
-ifeq ($(OS),MINGW32)
+ifeq ($(OS),Windows_NT)
 # Use wxWindows development branch to work around font scaling issues on Windows
 # Following line commented out by droftarts, as libwxgtk3.2-dev is the current version 06/11/24
 # WXVERSION=3.1
@@ -78,6 +82,10 @@ install64: $(BINDIR)\\bossa-x64-$(VERSION).msi
 .PHONY: install
 install: strip install32 install64
 
+.PHONY: dist
+dist: strip
+	cd $(BINDIR) && zip -9 bossa-$(VERSION)-windows-$(MACHINE).zip bossa$(EXE) bossac$(EXE) bossash$(EXE)
+
 endif
 
 #
@@ -89,10 +97,10 @@ COMMON_LIBS=-Wl,--as-needed
 COMMON_CXXFLAGS=-std=c++11
 WX_LIBS+=-lX11
 
-MACHINE:=$(shell uname -m)
-
-install: strip
-	tar cvzf $(BINDIR)/bossa-$(MACHINE)-$(VERSION).tgz -C $(BINDIR) bossa$(EXE) bossac$(EXE) bossash$(EXE)
+.PHONY: dist install
+dist: strip
+	tar cvzf $(BINDIR)/bossa-$(VERSION)-linux-$(MACHINE).tgz -C $(BINDIR) bossa$(EXE) bossac$(EXE) bossash$(EXE)
+install: dist
 endif
 
 #
@@ -100,8 +108,14 @@ endif
 #
 ifeq ($(OS),Darwin)
 COMMON_SRCS+=PosixSerialPort.cpp OSXPortFactory.cpp
-COMMON_CXXFLAGS=-arch x86_64 -mmacosx-version-min=10.9
-COMMON_LDFLAGS=-arch x86_64 -mmacosx-version-min=10.9
+# arm64 only exists from macOS 11 on
+ifeq ($(MACHINE),arm64)
+MACOSX_MIN=11.0
+else
+MACOSX_MIN=10.9
+endif
+COMMON_CXXFLAGS=-arch $(MACHINE) -mmacosx-version-min=$(MACOSX_MIN)
+COMMON_LDFLAGS=-arch $(MACHINE) -mmacosx-version-min=$(MACOSX_MIN)
 APP=BOSSA.app
 DMG=bossa-$(VERSION).dmg
 VOLUME=BOSSA
@@ -128,6 +142,11 @@ install: strip app
 	hdiutil detach /Volumes/$(VOLUME)/
 	hdiutil convert -format UDBZ -o $(BINDIR)/tmp$(DMG) $(BINDIR)/$(DMG)
 	mv -f $(BINDIR)/tmp$(DMG) $(BINDIR)/$(DMG)
+
+# Unlike the DMG this needs no Finder, so it also works on a headless build machine
+.PHONY: dist
+dist: strip app
+	cd $(BINDIR) && zip -9 -r bossa-$(VERSION)-macos-$(MACHINE).zip $(APP) bossac$(EXE) bossash$(EXE)
 endif
 
 #
@@ -224,6 +243,10 @@ BOSSASH_LIBS=-lreadline $(COMMON_LIBS)
 all: $(BINDIR)/bossa$(EXE) $(BINDIR)/bossac$(EXE) $(BINDIR)/bossash$(EXE)
 bossac: $(BINDIR)/bossac$(EXE)
 
+.PHONY: version
+version:
+	@echo $(VERSION)
+
 #
 # Common rules
 #
@@ -262,7 +285,7 @@ $(foreach src,$(BOSSA_SRCS),$(eval $(call bossa_obj,$(src))))
 #
 # Resource rules
 #
-ifeq ($(OS),MINGW32)
+ifeq ($(OS),Windows_NT)
 $(OBJDIR)/$(BOSSA_RC:%.rc=%.o): $(RESDIR)/$(BOSSA_RC)
 	@echo RC $<
 	$(Q)`wx-config --rescomp --version=$(WXVERSION)` -o $@ $<
