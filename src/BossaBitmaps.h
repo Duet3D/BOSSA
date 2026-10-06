@@ -30,6 +30,7 @@
 #define _BOSSABITMAPS_H
 
 #include <wx/wx.h>
+#include <stdint.h>
 
 class BossaBitmaps
 {
@@ -44,6 +45,7 @@ public:
 
 private:
     wxBitmap GetBitmapFromMemory(const unsigned char *data, int length);
+    static uint32_t readLE(const unsigned char* data, int size);
 
     wxBitmap _bossaLogo;
     wxBitmap _bossaIcon;

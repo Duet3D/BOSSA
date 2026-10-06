@@ -50,7 +50,44 @@ wxBitmap
 BossaBitmaps::GetBitmapFromMemory(const unsigned char *data, int length)
 {
     wxMemoryInputStream is(data, length);
-    return wxBitmap(wxImage(is, wxBITMAP_TYPE_ANY, -1), -1);
+    wxImage image(is, wxBITMAP_TYPE_ANY, -1);
+
+    // Newer wxWidgets versions ignore the alpha channel of a 32-bit BMP with a
+    // plain BITMAPINFOHEADER, which shows the transparent parts of the logos
+    // as black, so apply the alpha channel here
+    if (!image.HasAlpha() && length > 54 && data[0] == 'B' && data[1] == 'M' &&
+        readLE(data + 28, 2) == 32 && readLE(data + 30, 4) == 0)
+    {
+        uint32_t offset = readLE(data + 10, 4);
+        int32_t width = readLE(data + 18, 4);
+        int32_t height = readLE(data + 22, 4);
+        bool bottomUp = height > 0;
+        if (!bottomUp)
+            height = -height;
+
+        if (width == image.GetWidth() && height == image.GetHeight() &&
+            offset + (uint64_t) width * height * 4 <= (uint64_t) length)
+        {
+            image.SetAlpha();
+            for (int y = 0; y < height; y++)
+            {
+                const unsigned char* row = data + offset + (bottomUp ? height - 1 - y : y) * width * 4;
+                for (int x = 0; x < width; x++)
+                    image.SetAlpha(x, y, row[x * 4 + 3]);
+            }
+        }
+    }
+
+    return wxBitmap(image, -1);
+}
+
+uint32_t
+BossaBitmaps::readLE(const unsigned char* data, int size)
+{
+    uint32_t value = 0;
+    for (int i = size - 1; i >= 0; i--)
+        value = (value << 8) | data[i];
+    return value;
 }
 
 

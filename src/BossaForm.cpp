@@ -12,7 +12,11 @@
 MainFrame::MainFrame( wxWindow* parent, wxWindowID id, const wxString& title, const wxPoint& pos, const wxSize& size, long style ) : wxFrame( parent, id, title, pos, size, style )
 {
 	this->SetSizeHints( wxDefaultSize, wxDefaultSize );
+#ifndef __WXOSX__
+	// Light grey on Windows and Linux, but white on macOS, where the native
+	// window background is used instead
 	this->SetBackgroundColour( wxSystemSettings::GetColour( wxSYS_COLOUR_3DLIGHT ) );
+#endif
 	
 	wxBoxSizer* _topBoxSizer;
 	_topBoxSizer = new wxBoxSizer( wxVERTICAL );
@@ -220,7 +224,11 @@ MainFrame::~MainFrame()
 ProgressDialog::ProgressDialog( wxWindow* parent, wxWindowID id, const wxString& title, const wxPoint& pos, const wxSize& size, long style ) : wxDialog( parent, id, title, pos, size, style )
 {
 	this->SetSizeHints( wxDefaultSize, wxDefaultSize );
+#ifndef __WXOSX__
+	// Light grey on Windows and Linux, but white on macOS, where the native
+	// window background is used instead
 	this->SetBackgroundColour( wxSystemSettings::GetColour( wxSYS_COLOUR_3DLIGHT ) );
+#endif
 	
 	wxBoxSizer* _progressBoxSizer;
 	_progressBoxSizer = new wxBoxSizer( wxVERTICAL );
@@ -263,7 +271,11 @@ ProgressDialog::~ProgressDialog()
 AboutDialog::AboutDialog( wxWindow* parent, wxWindowID id, const wxString& title, const wxPoint& pos, const wxSize& size, long style ) : wxDialog( parent, id, title, pos, size, style )
 {
 	this->SetSizeHints( wxDefaultSize, wxDefaultSize );
+#ifndef __WXOSX__
+	// Light grey on Windows and Linux, but white on macOS, where the native
+	// window background is used instead
 	this->SetBackgroundColour( wxSystemSettings::GetColour( wxSYS_COLOUR_3DLIGHT ) );
+#endif
 	
 	wxBoxSizer* _topBoxSizer;
 	_topBoxSizer = new wxBoxSizer( wxVERTICAL );
@@ -327,7 +339,11 @@ AboutDialog::~AboutDialog()
 InfoDialog::InfoDialog( wxWindow* parent, wxWindowID id, const wxString& title, const wxPoint& pos, const wxSize& size, long style ) : wxDialog( parent, id, title, pos, size, style )
 {
 	this->SetSizeHints( wxDefaultSize, wxDefaultSize );
+#ifndef __WXOSX__
+	// Light grey on Windows and Linux, but white on macOS, where the native
+	// window background is used instead
 	this->SetBackgroundColour( wxSystemSettings::GetColour( wxSYS_COLOUR_3DLIGHT ) );
+#endif
 	
 	wxBoxSizer* _topBoxSizer;
 	_topBoxSizer = new wxBoxSizer( wxVERTICAL );
