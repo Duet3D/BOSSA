@@ -346,6 +346,9 @@ BossaWindow::OnWrite(wxCommandEvent& event)
                 return;
 
             flash->setLockRegions(std::vector<bool>(regions.size(), false));
+            // Unlock now rather than with the other options after the write,
+            // otherwise the write hits the locked pages
+            flash->writeOptions();
         }
     }
     catch(exception& e)

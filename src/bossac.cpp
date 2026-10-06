@@ -422,7 +422,12 @@ main(int argc, char* argv[])
         }
 
         if (config.unlock)
+        {
             flasher.lock(config.unlockArg, false);
+            // Unlock now rather than with the other options at the end,
+            // otherwise the erase and write hit the locked pages
+            flash->writeOptions();
+        }
 
         if (config.erase)
         {
