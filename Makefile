@@ -5,8 +5,6 @@
 #
 VERSION?=$(shell sed -n "/<ItemDefinitionGroup.*'Release|x64'/,/<\/ItemDefinitionGroup>/s/.*VERSION=\"\([^\"]*\)\".*/\1/p" Bossa.vcxproj | head -1)
 WXVERSION=3.2
-# Homebrew installs the 3.2 tool as wx-config-3.2 to keep it out of the way of wxwidgets 3.3
-WXCONFIG?=wx-config
 
 #
 # Source files
@@ -120,18 +118,36 @@ MACOSX_MIN=10.9
 endif
 COMMON_CXXFLAGS=-arch $(MACHINE) -mmacosx-version-min=$(MACOSX_MIN)
 COMMON_LDFLAGS=-arch $(MACHINE) -mmacosx-version-min=$(MACOSX_MIN)
+# Homebrew lives in /opt/homebrew on Apple Silicon and /usr/local on Intel, and
+# both can be installed side by side, so use the wxWidgets matching the target.
+# Homebrew installs the 3.2 tool as wx-config-3.2 to keep it out of the way of wxwidgets 3.3
+ifeq ($(MACHINE),arm64)
+WX_BREW_PREFIX=/opt/homebrew
+else
+WX_BREW_PREFIX=/usr/local
+endif
+WXCONFIG?=$(firstword $(wildcard $(WX_BREW_PREFIX)/bin/wx-config-$(WXVERSION) $(WX_BREW_PREFIX)/bin/wx-config) wx-config)
 APP=BOSSA.app
 DMG=bossa-$(VERSION).dmg
 VOLUME=BOSSA
 BACKGROUND=$(INSTALLDIR)/background.png
 .PHONY: app install
+# The wxWidgets libraries and their dependencies are copied into the bundle so
+# that it runs without Homebrew.  Rewriting the library paths invalidates the
+# code signatures, so the bundle is signed again (ad hoc) afterwards.
 app: strip-bossa
+	rm -rf $(BINDIR)/$(APP)
 	mkdir -p $(BINDIR)/$(APP)/Contents/MacOS
 	mkdir -p $(BINDIR)/$(APP)/Contents/Resources
 	cp -f $(INSTALLDIR)/Info.plist $(BINDIR)/$(APP)/Contents
 	echo -n "APPL????" > $(BINDIR)/$(APP)/Contents/PkgInfo
-	ln -f $(BINDIR)/bossa $(BINDIR)/$(APP)/Contents/MacOS/bossa
+	cp -f $(BINDIR)/bossa $(BINDIR)/$(APP)/Contents/MacOS/bossa
 	cp -f $(RESDIR)/BossaIcon.icns $(BINDIR)/$(APP)/Contents/Resources
+	dylibbundler -od -b -x $(BINDIR)/$(APP)/Contents/MacOS/bossa \
+		-d $(BINDIR)/$(APP)/Contents/Frameworks -p @executable_path/../Frameworks/ \
+		-s $$($(WXCONFIG) --prefix)/lib
+	codesign --force -s - $(BINDIR)/$(APP)/Contents/Frameworks/*
+	codesign --force -s - $(BINDIR)/$(APP)
 install: strip app
 	hdiutil create -ov -megabytes 5 -fs HFS+ -volname $(VOLUME) $(BINDIR)/$(DMG)
 	hdiutil attach -noautoopen $(BINDIR)/$(DMG)
@@ -147,10 +163,15 @@ install: strip app
 	hdiutil convert -format UDBZ -o $(BINDIR)/tmp$(DMG) $(BINDIR)/$(DMG)
 	mv -f $(BINDIR)/tmp$(DMG) $(BINDIR)/$(DMG)
 
-# Unlike the DMG this needs no Finder, so it also works on a headless build machine
+# Unlike the install DMG this needs no Finder, so it also works on a headless build machine
+DIST_DMG=bossa-$(VERSION)-macos-$(MACHINE).dmg
 .PHONY: dist
 dist: strip app
-	cd $(BINDIR) && zip -9 -r bossa-$(VERSION)-macos-$(MACHINE).zip $(APP) bossac$(EXE) bossash$(EXE)
+	rm -rf $(OBJDIR)/dmg
+	mkdir -p $(OBJDIR)/dmg
+	cp -R $(BINDIR)/$(APP) $(BINDIR)/bossac$(EXE) $(BINDIR)/bossash$(EXE) $(OBJDIR)/dmg/
+	ln -s /Applications $(OBJDIR)/dmg/Applications
+	hdiutil create -ov -volname $(VOLUME) -srcfolder $(OBJDIR)/dmg -format UDZO $(BINDIR)/$(DIST_DMG)
 endif
 
 #
@@ -184,6 +205,12 @@ ifeq (${OS},FreeBSD)
 COMMON_SRCS+=PosixSerialPort.cpp BSDPortFactory.cpp
 
 endif
+
+#
+# Homebrew installs the 3.2 tool as wx-config-3.2 to keep it out of the way of
+# wxwidgets 3.3.  macOS chooses its own above.
+#
+WXCONFIG?=wx-config
 
 #
 # Object files

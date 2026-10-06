@@ -53,18 +53,18 @@ jobs:
       - uses: actions/checkout@v7
 
       - name: Install dependencies
-        run: brew install wxwidgets@3.2 readline
+        run: brew install wxwidgets@3.2 readline dylibbundler
 
       - name: Keep make from regenerating the committed applet and bitmap sources
         run: touch src/*.cpp
 
       - name: Build
-        run: make -j"$(sysctl -n hw.ncpu)" WXCONFIG=wx-config-3.2 CXXFLAGS="-I$(brew --prefix readline)/include" LDFLAGS="-L$(brew --prefix readline)/lib" dist
+        run: make -j"$(sysctl -n hw.ncpu)" CXXFLAGS="-I$(brew --prefix readline)/include" LDFLAGS="-L$(brew --prefix readline)/lib" dist
 
       - uses: actions/upload-artifact@v7
         with:
           name: bossa-macos-${{ matrix.machine }}
-          path: bin/*.zip
+          path: bin/*.dmg
 
   windows:
     name: Windows x86_64
