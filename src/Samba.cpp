@@ -544,6 +544,11 @@ Samba::write(uint32_t addr, const uint8_t* buffer, int size)
     {
         _port->flush();
         writeBinary(buffer, size);
+#ifdef __APPLE__
+        // macOS can otherwise combine the end of the data with the next
+        // command in the same USB transfer
+        _port->flush();
+#endif
     }
     else
     {
