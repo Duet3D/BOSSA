@@ -100,11 +100,15 @@ ifeq ($(OS),Linux)
 COMMON_SRCS+=PosixSerialPort.cpp LinuxPortFactory.cpp
 COMMON_LIBS=-Wl,--as-needed
 COMMON_CXXFLAGS=-std=c++11
-WX_LIBS+=-lX11
+# bossa loads wxWidgets from the bundled lib directory, so the tarball also runs where another wxWidgets version is installed
+WX_LIBS+=-lX11 -Wl,-rpath,'$$ORIGIN/lib'
 
 .PHONY: dist install
 dist: strip
-	tar cvzf $(BINDIR)/bossa-$(VERSION)-linux-$(MACHINE).tgz -C $(BINDIR) bossa$(EXE) bossac$(EXE) bossash$(EXE)
+	rm -rf $(BINDIR)/lib
+	mkdir -p $(BINDIR)/lib
+	cp -L $$(ldd $(BINDIR)/bossa$(EXE) | awk '/libwx_/ { print $$3 }') $(BINDIR)/lib
+	tar cvzf $(BINDIR)/bossa-$(VERSION)-linux-$(MACHINE).tgz -C $(BINDIR) bossa$(EXE) bossac$(EXE) bossash$(EXE) lib
 install: dist
 endif
 
